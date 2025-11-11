@@ -2,10 +2,10 @@ import { ConfigProvider, Layout, theme } from "antd";
 import "./App.css";
 import { Content, Header } from "antd/es/layout/layout";
 import { Aside } from "./components/Aside";
+import { Context, initialValue } from "./store/context";
 
 const headerStyle: React.CSSProperties = {
   textAlign: "center",
-
   height: 64,
   paddingInline: 48,
   lineHeight: "64px",
@@ -25,10 +25,10 @@ function App() {
     >
       <Layout>
         <Header style={headerStyle}>Image Atlas Matcher</Header>
-        <Layout>
+        <Context.Provider value={initialValue}>
           <Aside />
           <Content>Content</Content>
-        </Layout>
+        </Context.Provider>
       </Layout>
     </ConfigProvider>
   );
