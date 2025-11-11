@@ -1,8 +1,9 @@
 import { ConfigProvider, Layout, theme } from "antd";
 import "./App.css";
 import { Content, Header } from "antd/es/layout/layout";
-import { Aside } from "./components/Aside";
+import { Aside } from "./components/Aside/Aside";
 import { Context, initialValue } from "./store/context";
+import { MainView } from "./components/MainView";
 
 const headerStyle: React.CSSProperties = {
   textAlign: "center",
@@ -25,10 +26,14 @@ function App() {
     >
       <Layout>
         <Header style={headerStyle}>Image Atlas Matcher</Header>
-        <Context.Provider value={initialValue}>
-          <Aside />
-          <Content>Content</Content>
-        </Context.Provider>
+        <Layout>
+          <Context.Provider value={initialValue}>
+            <Aside />
+            <Content>
+              <MainView />
+            </Content>
+          </Context.Provider>
+        </Layout>
       </Layout>
     </ConfigProvider>
   );
