@@ -8,3 +8,11 @@ html,
 body {
   min-height: 100vh;
 }
+
+#main-canvas {
+  width: 100%;
+  height: calc(100vh - 270px);
+  background: #0b0d12;
+  border-bottom: 1px solid #222633;
+  image-rendering: pixelated;
+}

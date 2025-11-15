@@ -47,5 +47,5 @@ export const MainView = () => {
     if (!image || !parcedFrames) fitCanvasToParent();
   }, [image, parcedFrames]);
 
-  return <canvas ref={canvasRef}></canvas>;
+  return <canvas id="main-canvas" ref={canvasRef}></canvas>;
 };
