@@ -13,8 +13,8 @@ export const initialValue: ContextType = {
   image: null,
   atlasData: null,
   parcedFrames: null,
-  setImage: (value) => ({ ...initialValue, image: value }),
-  setAtlasData: () => {},
+  setImage: (img) => ({ ...initialValue, image: img }),
+  setAtlasData: (data) => ({ ...initialValue, atlasData: data }),
   setParcedFrames: (data) => ({ ...initialValue, parcedFrames: data }),
 };
 

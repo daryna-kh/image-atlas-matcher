@@ -43,5 +43,9 @@ export const MainView = () => {
     return () => window.removeEventListener("resize", fitCanvasToParent);
   }, []);
 
-  return <canvas ref={canvasRef}></canvas>;
+  useEffect(() => {
+    if (!image || !parcedFrames) fitCanvasToParent();
+  }, [image, parcedFrames]);
+
+  return <canvas id="main-canvas" ref={canvasRef}></canvas>;
 };

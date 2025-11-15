@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { AtlasFrame } from "./Aside/types";
-import { Context, initialValue } from "../store/context";
+import { Context } from "../store/context";
 
 export const ContextProvider = ({
   children,
@@ -23,5 +23,5 @@ export const ContextProvider = ({
     [image, atlasData, parcedFrames]
   );
 
-  return <Context.Provider value={initialValue}>{children}</Context.Provider>;
+  return <Context.Provider value={value}>{children}</Context.Provider>;
 };
