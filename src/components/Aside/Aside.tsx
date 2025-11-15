@@ -12,8 +12,8 @@ export const Aside = () => {
   const [metaDataUploadStatus, setMetaDataUploadStatus] = useState(false);
   const { atlasData, setImage, setAtlasData, setParcedFrames } =
     useContext(Context);
-  const allowedImageTypes = ["image/png", "image/web", "image/jpeg"];
-  const allowedMetaDateTypes = ["json"];
+  const allowedImageTypes = ["image/png", "image/webp", "image/jpeg"];
+  const allowedMetaDateTypes = ["json", "application/json"];
   const siderStyle: React.CSSProperties = {
     color: "#2B2B2B",
     backgroundColor: "#F5F3FF",
@@ -25,25 +25,32 @@ export const Aside = () => {
     async beforeUpload(file: RcFile) {
       const isRequiredType = allowedImageTypes.includes(file.type);
 
-      setImgUploadStatus(isRequiredType);
+      setImgUploadStatus(false);
 
       if (isRequiredType) {
         const img = await loadImageFromFile(file);
         setImage(img);
+        setImgUploadStatus(true);
       }
 
-      return isRequiredType;
+      return false;
     },
   };
   const uploadMetaDataProps = {
     name: "file",
     accept: ".json",
     async beforeUpload(file: RcFile) {
-      const isRequiredType = allowedMetaDateTypes.includes(file.type);
-      setMetaDataUploadStatus(isRequiredType);
+      const isRequiredType = allowedMetaDateTypes.includes(lowerFileType);
+      setMetaDataUploadStatus(false);
+
+      if (!isRequiredType) {
+        return false;
+      }
+
       const fileMeta = await file.text();
       setAtlasData(fileMeta);
-      return isRequiredType;
+      setMetaDataUploadStatus(true);
+      return false;
     },
   };
 
@@ -65,22 +72,19 @@ export const Aside = () => {
   }
 
   function handleFilesChanged() {
-    if (!imgUploadStatus && !metaDataUploadStatus) return;
-
-    if (atlasData) {
-      try {
-        const j = JSON.parse(atlasData);
-        const frames = parseJsonAtlas(j);
-        setParcedFrames(frames);
-      } catch (e) {
-        console.error(e);
-      }
+    if (!imgUploadStatus || !metaDataUploadStatus || !atlasData) return;
+    try {
+      const j = JSON.parse(atlasData);
+      const frames = parseJsonAtlas(j);
+      setParcedFrames(frames);
+    } catch (e) {
+      console.error(e);
     }
   }
 
   useEffect(() => {
     handleFilesChanged();
-  }, [imgUploadStatus, metaDataUploadStatus]);
+  }, [imgUploadStatus, metaDataUploadStatus, atlasData]);
 
   return (
     <Sider width="20%" style={siderStyle}>
