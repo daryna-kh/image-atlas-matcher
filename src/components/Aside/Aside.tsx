@@ -2,16 +2,23 @@ import { UploadOutlined } from "@ant-design/icons";
 import { Button, Upload } from "antd";
 import Sider from "antd/es/layout/Sider";
 import type { RcFile } from "antd/es/upload";
-import { loadImageFromFile } from "../../utils";
 import { useContext, useEffect, useState } from "react";
 import { Context } from "../../store/context";
+import { loadImageFromFile } from "../../utils";
+import { FrameList } from "../FrameList";
 import type { AtlasFrame, AtlasHashWithMeta } from "./types";
 
 export const Aside = () => {
   const [imgUploadStatus, setImgUploadStatus] = useState(false);
   const [metaDataUploadStatus, setMetaDataUploadStatus] = useState(false);
-  const { atlasData, setImage, setAtlasData, setParcedFrames } =
-    useContext(Context);
+  const {
+    atlasData,
+    image,
+    parcedFrames,
+    setImage,
+    setAtlasData,
+    setParcedFrames,
+  } = useContext(Context);
   const allowedImageTypes = ["image/png", "image/webp", "image/jpeg"];
   const allowedMetaDateTypes = ["json", "application/json"];
   const siderStyle: React.CSSProperties = {
@@ -40,7 +47,7 @@ export const Aside = () => {
     name: "file",
     accept: ".json",
     async beforeUpload(file: RcFile) {
-      const isRequiredType = allowedMetaDateTypes.includes(lowerFileType);
+      const isRequiredType = allowedMetaDateTypes.includes(file.type);
       setMetaDataUploadStatus(false);
 
       if (!isRequiredType) {
@@ -102,6 +109,7 @@ export const Aside = () => {
         </Upload>
         {/* <p>JSON from TexturePacker and XML are supported.</p> */}
       </div>
+      <FrameList frames={parcedFrames} image={image} />
     </Sider>
   );
 };
