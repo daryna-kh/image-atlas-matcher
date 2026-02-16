@@ -5,12 +5,94 @@
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="/vite.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Image Atlas Matcher</title>
+  <title>Atlas Inspector</title>
 </head>
 
 <body>
-  <div id="root"></div>
-  <script type="module" src="/src/main.tsx"></script>
+  <div id="app">
+    <header>
+      <h1>
+        Atlas Inspector
+      </h1>
+    </header>
+    <div class="wrap">
+      <aside>
+        <div class="section inputs">
+          <h2>Files</h2>
+          <label>Atlas image (PNG)</label>
+          <input id="imgFile" type="file" accept="image/png,image/webp,image/jpeg" />
+          <label>Atlas metadata (JSON or XML)</label>
+          <input id="metaFile" type="file" accept=".json,.xml,.plist,.txt,application/json,text/xml" />
+          <div class="hint">
+            Supports JSON from TexturePacker and XML (Sparrow/Starling:
+            &lt;SubTexture .../&gt;).
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Search by Name</h2>
+          <div class="row">
+            <input id="nameQuery" type="text" placeholder="enter frame name..." class="grow" />
+            <button class="btn" id="btnFindByName">Find</button>
+          </div>
+          <div class="hint">
+            Names are taken from JSON/XML (frames keys / name attribute).
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Search by Image</h2>
+          <label>Image to search</label>
+          <input id="queryImg" type="file" accept="image/*" />
+          <div class="row" style="margin-top: 8px">
+            <button class="btn" id="btnFindByImage">Match</button>
+            <span class="hint">Comparison by MSE at 64×64, with rotate support.</span>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Atlas Frames</h2>
+          <div class="list" id="framesList"></div>
+          <div class="hint" style="margin-top: 6px">
+            Click a frame to highlight it on the atlas.
+          </div>
+        </div>
+      </aside>
+
+      <main>
+        <div class="legend">
+          <span class="b"></span> selected frame
+          <span class="s"></span> all frames
+          <span class="pill">Mouse wheel - zoom, drag - pan</span>
+        </div>
+
+        <div class="status" id="status">
+          Upload the atlas image file and metadata.
+        </div>
+
+        <canvas id="atlasCanvas"></canvas>
+
+        <div class="section">
+          <h2>Frame Details</h2>
+          <div id="frameDetails" class="hint">-</div>
+          <div style="display: flex; gap: 16px; margin-top: 10px">
+            <div>
+              <div class="hint">Cropped from atlas:</div>
+              <canvas id="cropCanvas" width="256" height="256"
+                style="border: 1px solid #222633; background: #0b0d12"></canvas>
+            </div>
+            <div>
+              <div class="hint">Query image (normalized):</div>
+              <canvas id="queryCanvas" width="256" height="256"
+                style="border: 1px solid #222633; background: #0b0d12"></canvas>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
 </body>
 
 </html>
