@@ -1,79 +1,43 @@
+import {
+  btnFindByImage,
+  btnFindByName,
+  canvas,
+  cropCanvas,
+  detailsEl,
+  framesList,
+  imgFile,
+  metaFile,
+  nameQuery,
+  queryCanvas,
+  queryCtx,
+  queryImg,
+  statusEl,
+} from "./constants";
+import type { Point } from "./global";
+import { loadImageFromFile } from "./handlers";
+import { parseMeta } from "./parsers";
+import {
+  atlasImg,
+  isPanning,
+  offsetX,
+  offsetY,
+  scale,
+  selectedIndex,
+  setSelectedIndex,
+  startPan,
+} from "./state";
 import "./style.css";
+import { draw, drawCropTo, fitCanvasToParent } from "./view";
 
 document.addEventListener("DOMContentLoaded", () => {
-  const imgFile = document.getElementById("imgFile")!;
-  const metaFile = document.getElementById("metaFile")!;
-  const nameQuery = document.getElementById("nameQuery")!;
-  const btnFindByName = document.getElementById("btnFindByName")!;
-  const queryImg = document.getElementById("queryImg")!;
-  const btnFindByImage = document.getElementById("btnFindByImage")!;
-  const framesList = document.getElementById("framesList")!;
-  const statusEl = document.getElementById("status")!;
-  const detailsEl = document.getElementById("frameDetails")!;
-  const canvas = document.getElementById("atlasCanvas")! as HTMLCanvasElement;
-  const queryCanvas = document.getElementById(
-    "queryCanvas",
-  )! as HTMLCanvasElement;
-  const cropCanvas = document.getElementById(
-    "cropCanvas",
-  )! as HTMLCanvasElement;
-  const ctx = canvas.getContext("2d");
-  const cropCtx = cropCanvas.getContext("2d");
-  const queryCtx = queryCanvas.getContext("2d");
-
-  let atlasImg: any = null;
-  let frames: any = []; // {name, x,y,w,h, rotated: boolean}
-  let selectedIndex = -1;
-
-  // viewport / pan & zoom
-  let scale = 1;
-  let offsetX = 0,
-    offsetY = 0;
-  let isPanning = false,
-    startPan = null;
-
-  function setStatus(t, cls = "") {
+  function setStatus(t: string, cls: string = ""): void {
     statusEl.textContent = t;
     statusEl.className = "status " + cls;
   }
 
-  function fitCanvasToParent() {
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * devicePixelRatio;
-    canvas.height = rect.height * devicePixelRatio;
-    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-    draw();
-  }
   window.addEventListener("resize", fitCanvasToParent);
 
-  function draw() {
-    ctx.save();
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.setTransform(scale, 0, 0, scale, offsetX, offsetY);
-    if (atlasImg) ctx.drawImage(atlasImg, 0, 0);
-    // all frames boxes
-    ctx.lineWidth = 1 / scale;
-    ctx.strokeStyle = "#e5c07b";
-    ctx.setLineDash([4 / scale, 4 / scale]);
-    for (let i = 0; i < frames.length; i++) {
-      const f = frames[i];
-      ctx.strokeRect(f.x, f.y, f.w, f.h);
-    }
-    // selected
-    if (selectedIndex >= 0) {
-      const f = frames[selectedIndex];
-      ctx.setLineDash([]);
-      ctx.strokeStyle = "#7aa2f7";
-      ctx.lineWidth = 2 / scale;
-      ctx.strokeRect(f.x, f.y, f.w, f.h);
-    }
-    ctx.restore();
-  }
-
-  function worldToScreen(x, y) {
-    return { x: x * scale + offsetX, y: y * scale + offsetY };
-  }
-  function screenToWorld(x, y) {
+  function screenToWorld(x: number, y: number): Point {
     return { x: (x - offsetX) / scale, y: (y - offsetY) / scale };
   }
 
@@ -89,7 +53,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const after = screenToWorld(mx, my);
       offsetX += mx - after.x * scale - (mx - before.x * scale);
       offsetY += my - after.y * scale - (my - before.y * scale);
-      draw();
+      draw(canvas);
       e.preventDefault();
     },
     { passive: false },
@@ -99,16 +63,19 @@ document.addEventListener("DOMContentLoaded", () => {
     isPanning = true;
     startPan = { x: e.clientX, y: e.clientY };
   });
+
   window.addEventListener("mouseup", () => {
     isPanning = false;
     startPan = null;
   });
+
   window.addEventListener("mousemove", (e) => {
     if (!isPanning) return;
+    if (!startPan) return;
     offsetX += e.clientX - startPan.x;
     offsetY += e.clientY - startPan.y;
     startPan = { x: e.clientX, y: e.clientY };
-    draw();
+    draw(canvas);
   });
 
   canvas.addEventListener("click", (e) => {
@@ -128,23 +95,25 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  function selectFrame(idx) {
-    selectedIndex = idx;
-    draw();
+  function selectFrame(idx: number): void {
+    setSelectedIndex(idx);
+    draw(canvas);
     updateDetails();
     previewCrop();
     scrollToItem(idx);
   }
 
-  function scrollToItem(idx) {
-    const item = framesList.querySelector(`[data-idx="${idx}"]`);
-    if (item) {
-      item.scrollIntoView({ block: "nearest" });
-      framesList
-        .querySelectorAll(".item")
-        .forEach((el) => (el.style.background = ""));
-      item.style.background = "#10131a";
-    }
+  function scrollToItem(idx: number): void {
+    const item = framesList.querySelector<HTMLDivElement>(
+      `[data-idx="${idx}"]`,
+    );
+    if (!item) return;
+
+    item.scrollIntoView({ block: "nearest" });
+    framesList
+      .querySelectorAll<HTMLDivElement>(".item")
+      .forEach((el) => (el.style.background = ""));
+    item.style.background = "#10131a";
   }
 
   function updateDetails() {
@@ -156,17 +125,19 @@ document.addEventListener("DOMContentLoaded", () => {
     detailsEl.innerHTML = `<b>${escapeHtml(f.name)}</b><br>pos: [${f.x}, ${f.y}] size: [${f.w}×${f.h}] rotated: ${f.rotated ? "yes" : "no"}`;
   }
 
-  function escapeHtml(s) {
+  function escapeHtml(s: string): string {
     return s.replace(
       /[&<>"']/g,
       (m) =>
-        ({
-          "&": "&amp;",
-          "<": "&lt;",
-          ">": "&gt;",
-          '"': "&quot;",
-          "'": "&#039;",
-        })[m],
+        (
+          ({
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#039;",
+          }) as Record<string, string>
+        )[m],
     );
   }
 
@@ -175,13 +146,12 @@ document.addEventListener("DOMContentLoaded", () => {
     frames.forEach((f, i) => {
       const div = document.createElement("div");
       div.className = "item";
-      div.dataset.idx = i;
+      // div.dataset.idx = i;
       const cnv = document.createElement("canvas");
       cnv.className = "thumb";
       cnv.width = 44;
       cnv.height = 44;
-      const cctx = cnv.getContext("2d");
-      // draw thumbnail from atlas (fit)
+      const cctx = cnv.getContext("2d") as CanvasRenderingContext2D;
       if (atlasImg) {
         const scale = Math.min(cnv.width / f.w, cnv.height / f.h);
         const tw = Math.max(1, Math.floor(f.w * scale));
@@ -208,119 +178,16 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function loadImageFromFile(file) {
-    return new Promise((resolve, reject) => {
-      const url = URL.createObjectURL(file);
-      const img = new Image();
-      img.onload = () => {
-        URL.revokeObjectURL(url);
-        resolve(img);
-      };
-      img.onerror = reject;
-      img.src = url;
-    });
-  }
-
-  function parseMeta(text, typeHint) {
-    // Try JSON first
-    try {
-      const j = JSON.parse(text);
-      return parseJsonAtlas(j);
-    } catch (e) {
-      // XML fallback
-    }
-    const parser = new DOMParser();
-    const xml = parser.parseFromString(text, "application/xml");
-    if (xml.getElementsByTagName("parsererror").length) {
-      throw new Error("Не удалось разобрать как JSON или XML");
-    }
-    return parseXmlAtlas(xml);
-  }
-
-  function parseJsonAtlas(j) {
-    const out = [];
-    // TexturePacker: { frames: { "name": { frame:{x,y,w,h}, rotated:true/false, ... }, ... } }
-    if (j && j.frames) {
-      if (Array.isArray(j.frames)) {
-        // sometimes frames is an array: [{filename, frame:{x,y,w,h}, rotated}...]
-        for (const fr of j.frames) {
-          const name = fr.filename || fr.name || fr.n || "(noname)";
-          const rect = fr.frame || fr;
-          const rotated = !!fr.rotated;
-          out.push({
-            name,
-            x: rect.x | 0,
-            y: rect.y | 0,
-            w: rect.w | 0,
-            h: rect.h | 0,
-            rotated,
-          });
-        }
-      } else {
-        for (const [name, fr] of Object.entries(j.frames)) {
-          const rect = fr.frame || fr;
-          const rotated = !!fr.rotated;
-          out.push({
-            name,
-            x: rect.x | 0,
-            y: rect.y | 0,
-            w: rect.w | 0,
-            h: rect.h | 0,
-            rotated,
-          });
-        }
-      }
-      return out;
-    }
-    // Generic: array of rects with name
-    if (Array.isArray(j)) {
-      for (const fr of j) {
-        out.push({
-          name: fr.name || "(noname)",
-          x: fr.x | 0,
-          y: fr.y | 0,
-          w: fr.w | 0,
-          h: fr.h | 0,
-          rotated: !!fr.rotated,
-        });
-      }
-      return out;
-    }
-    throw new Error("Неизвестный формат JSON атласа");
-  }
-
-  function parseXmlAtlas(xml) {
-    const out = [];
-    // Sparrow/Starling: <TextureAtlas imagePath="..."> <SubTexture name="..." x=".." y=".." width=".." height=".." rotated="true|false" /> </TextureAtlas>
-    const subs = xml.getElementsByTagName("SubTexture");
-    if (subs.length) {
-      for (const el of subs) {
-        const name = el.getAttribute("name") || "(noname)";
-        const x = +el.getAttribute("x") || 0,
-          y = +el.getAttribute("y") || 0;
-        const w = +el.getAttribute("width") || 0,
-          h = +el.getAttribute("height") || 0;
-        const rotated =
-          el.getAttribute("rotated") === "true" ||
-          el.getAttribute("rotation") === "90";
-        out.push({ name, x, y, w, h, rotated });
-      }
-      return out;
-    }
-    throw new Error("Неизвестный формат XML атласа");
-  }
-
   async function handleFilesChanged() {
+    if (!imgFile.files || !metaFile.files) return;
     if (!imgFile.files[0] || !metaFile.files[0]) return;
     try {
-      setStatus("Загружаю изображение атласа...");
+      setStatus("Loading atlas image...");
       atlasImg = await loadImageFromFile(imgFile.files[0]);
-      setStatus("Читаю метаданные атласа...");
+      setStatus("Reading the atlas metadata...");
       const metaText = await metaFile.files[0].text();
-      frames = parseMeta(metaText, metaFile.files[0].type);
-      if (!frames.length)
-        throw new Error("В метаданных не найдено ни одного фрейма");
-      // Reset view
+      frames = parseMeta(metaText);
+      if (!frames.length) throw new Error("No frames found in metadata");
       scale = 1;
       offsetX = 0;
       offsetY = 0;
@@ -328,11 +195,11 @@ document.addEventListener("DOMContentLoaded", () => {
       fitCanvasToParent();
       populateList();
       setStatus(
-        `Готово: загружено фреймов: ${frames.length}. Кликните по списку или по атласу.`,
+        `Done: frames loaded: ${frames.length}. Click on the list or on the atlas.`,
       );
     } catch (e) {
       console.error(e);
-      setStatus("Ошибка: " + e.message, "error");
+      // setStatus("Error: " + e.message, "error");
     }
   }
 
@@ -346,59 +213,37 @@ document.addEventListener("DOMContentLoaded", () => {
     const idx = frames.findIndex((f) => f.name.toLowerCase().includes(q));
     if (idx >= 0) {
       selectFrame(idx);
-      setStatus(`Найдено совпадение по имени: "${frames[idx].name}"`, "match");
+      setStatus(`Match found by name: “${frames[idx].name}”`, "match");
     } else {
-      setStatus("Совпадений по имени не найдено", "warning");
+      setStatus("No matches found by name", "warning");
     }
   });
 
-  function drawCropTo(canvas, f) {
-    const c = canvas.getContext("2d");
-    c.clearRect(0, 0, canvas.width, canvas.height);
-    if (!atlasImg || !f) return;
-    const scale = Math.min(canvas.width / f.w, canvas.height / f.h);
-    const tw = Math.max(1, Math.floor(f.w * scale));
-    const th = Math.max(1, Math.floor(f.h * scale));
-    const ox = Math.floor((canvas.width - tw) / 2);
-    const oy = Math.floor((canvas.height - th) / 2);
-    c.imageSmoothingEnabled = false;
-    // handle rotated frames: assume 90° rotation around frame rect
-    if (f.rotated) {
-      c.save();
-      c.translate(ox + tw / 2, oy + th / 2);
-      c.rotate(-Math.PI / 2);
-      c.drawImage(atlasImg, f.x, f.y, f.h, f.w, -th / 2, -tw / 2, th, tw);
-      c.restore();
-    } else {
-      c.drawImage(atlasImg, f.x, f.y, f.w, f.h, ox, oy, tw, th);
-    }
-  }
-
   function previewCrop() {
     const f = frames[selectedIndex];
-    drawCropTo(cropCanvas, f);
+    drawCropTo(cropCanvas, f, atlasImg);
   }
 
-  // Image matching by MSE on normalized 64x64
-  async function findByImage() {
+  async function findByImage(): Promise<void> {
+    if (!queryImg.files) return;
     if (!queryImg.files[0]) {
-      setStatus("Загрузите картинку для сопоставления", "warning");
+      setStatus("Upload an image for comparison", "warning");
       return;
     }
     if (!atlasImg || !frames.length) {
-      setStatus("Загрузите атлас и метаданные", "warning");
+      setStatus("Download the atlas and metadata", "warning");
       return;
     }
     try {
-      setStatus("Готовлю изображение-запрос...");
+      setStatus("Preparing image request...");
       const qImg = await loadImageFromFile(queryImg.files[0]);
 
-      // Normalize query to 64x64
       const Q = document.createElement("canvas");
       Q.width = 64;
       Q.height = 64;
-      const qctx = Q.getContext("2d", { willReadFrequently: true });
-      // Fit query inside 64x64 with aspect preserved
+      const qctx = Q.getContext("2d", {
+        willReadFrequently: true,
+      }) as CanvasRenderingContext2D;
       const qScale = Math.min(64 / qImg.width, 64 / qImg.height);
       const qW = Math.max(1, Math.floor(qImg.width * qScale));
       const qH = Math.max(1, Math.floor(qImg.height * qScale));
@@ -410,17 +255,19 @@ document.addEventListener("DOMContentLoaded", () => {
       qctx.drawImage(qImg, 0, 0, qImg.width, qImg.height, qx, qy, qW, qH);
       const qData = qctx.getImageData(0, 0, 64, 64).data;
 
-      // Prepare temp canvas to extract and normalize frames
       const T = document.createElement("canvas");
       T.width = 64;
       T.height = 64;
-      const tctx = T.getContext("2d", { willReadFrequently: true });
+      const tctx = T.getContext("2d", {
+        willReadFrequently: true,
+      }) as CanvasRenderingContext2D;
 
-      let best = { idx: -1, mse: Infinity };
+      let best: { idx: number; mse: number } = {
+        idx: -1,
+        mse: Infinity,
+      };
 
-      setStatus(
-        "Сравниваю с фреймами... может занять время на больших атласах",
-      );
+      setStatus("I compare it with frames...");
       for (let i = 0; i < frames.length; i++) {
         const f = frames[i];
         tctx.clearRect(0, 0, 64, 64);
@@ -431,7 +278,6 @@ document.addEventListener("DOMContentLoaded", () => {
           ty = Math.floor((64 - th) / 2);
         tctx.imageSmoothingEnabled = false;
         if (f.rotated) {
-          // draw rotated frame so it appears upright for comparison
           tctx.save();
           tctx.translate(32, 32);
           tctx.rotate(-Math.PI / 2);
@@ -451,13 +297,11 @@ document.addEventListener("DOMContentLoaded", () => {
           tctx.drawImage(atlasImg, f.x, f.y, f.w, f.h, tx, ty, tw, th);
         }
         const d = tctx.getImageData(0, 0, 64, 64).data;
-        // MSE
         let mse = 0;
         for (let p = 0; p < d.length; p += 4) {
           const dr = d[p] - qData[p];
           const dg = d[p + 1] - qData[p + 1];
           const db = d[p + 2] - qData[p + 2];
-          // ignore alpha to be more robust
           mse += dr * dr + dg * dg + db * db;
         }
         mse /= 64 * 64 * 3;
@@ -467,10 +311,9 @@ document.addEventListener("DOMContentLoaded", () => {
       if (best.idx >= 0) {
         selectFrame(best.idx);
         setStatus(
-          `Лучшее совпадение: "${frames[best.idx].name}" (MSE=${best.mse.toFixed(1)})`,
+          `Best match: "${frames[best.idx].name}" (MSE=${best.mse.toFixed(1)})`,
           "match",
         );
-        // show normalized query & crop
         queryCtx.clearRect(0, 0, queryCanvas.width, queryCanvas.height);
         queryCtx.imageSmoothingEnabled = false;
         queryCtx.drawImage(
@@ -486,11 +329,11 @@ document.addEventListener("DOMContentLoaded", () => {
         );
         previewCrop();
       } else {
-        setStatus("Совпадений не найдено", "warning");
+        setStatus("No matches found", "warning");
       }
     } catch (e) {
       console.error(e);
-      setStatus("Ошибка сопоставления: " + e.message, "error");
+      // setStatus("Matching error: " + e.message, "error");
     }
   }
 
