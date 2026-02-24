@@ -1,78 +1,41 @@
-import type { Frame, JsonAtlas, Point } from "./global";
+import {
+  btnFindByImage,
+  btnFindByName,
+  canvas,
+  cropCanvas,
+  detailsEl,
+  framesList,
+  imgFile,
+  metaFile,
+  nameQuery,
+  queryCanvas,
+  queryCtx,
+  queryImg,
+  statusEl,
+} from "./constants";
+import type { Point } from "./global";
+import { loadImageFromFile } from "./handlers";
+import { parseMeta } from "./parsers";
+import {
+  atlasImg,
+  isPanning,
+  offsetX,
+  offsetY,
+  scale,
+  selectedIndex,
+  setSelectedIndex,
+  startPan,
+} from "./state";
 import "./style.css";
+import { draw, drawCropTo, fitCanvasToParent } from "./view";
 
 document.addEventListener("DOMContentLoaded", () => {
-  const imgFile = document.getElementById("imgFile") as HTMLInputElement;
-  const metaFile = document.getElementById("metaFile") as HTMLInputElement;
-  const nameQuery = document.getElementById("nameQuery") as HTMLInputElement;
-  const btnFindByName = document.getElementById(
-    "btnFindByName",
-  ) as HTMLButtonElement;
-  const queryImg = document.getElementById("queryImg") as HTMLInputElement;
-  const btnFindByImage = document.getElementById(
-    "btnFindByImage",
-  ) as HTMLButtonElement;
-
-  const framesList = document.getElementById("framesList") as HTMLDivElement;
-  const statusEl = document.getElementById("status") as HTMLDivElement;
-  const detailsEl = document.getElementById("frameDetails") as HTMLDivElement;
-
-  const canvas = document.getElementById("atlasCanvas") as HTMLCanvasElement;
-  const queryCanvas = document.getElementById(
-    "queryCanvas",
-  ) as HTMLCanvasElement;
-  const cropCanvas = document.getElementById("cropCanvas") as HTMLCanvasElement;
-
-  const ctx = canvas.getContext("2d") as CanvasRenderingContext2D;
-  const queryCtx = queryCanvas.getContext("2d") as CanvasRenderingContext2D;
-
-  let atlasImg: HTMLImageElement | null = null;
-  let frames: Frame[] = [];
-  let selectedIndex: number = -1;
-
-  let scale: number = 1;
-  let offsetX: number = 0;
-  let offsetY: number = 0;
-
-  let isPanning: boolean = false;
-  let startPan: Point | null = null;
-
   function setStatus(t: string, cls: string = ""): void {
     statusEl.textContent = t;
     statusEl.className = "status " + cls;
   }
 
-  function fitCanvasToParent() {
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * devicePixelRatio;
-    canvas.height = rect.height * devicePixelRatio;
-    ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
-    draw();
-  }
-
   window.addEventListener("resize", fitCanvasToParent);
-
-  function draw() {
-    ctx.save();
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.setTransform(scale, 0, 0, scale, offsetX, offsetY);
-    if (atlasImg) ctx.drawImage(atlasImg, 0, 0);
-    ctx.lineWidth = 1 / scale;
-    ctx.strokeStyle = "#e5c07b";
-    ctx.setLineDash([4 / scale, 4 / scale]);
-    for (let i = 0; i < frames.length; i++) {
-      const f = frames[i];
-      ctx.strokeRect(f.x, f.y, f.w, f.h);
-    }
-    if (selectedIndex >= 0) {
-      const f = frames[selectedIndex];
-      ctx.setLineDash([]);
-      ctx.strokeStyle = "#7aa2f7";
-      ctx.lineWidth = 2 / scale;
-      ctx.strokeRect(f.x, f.y, f.w, f.h);
-    }
-    ctx.restore();
-  }
 
   function screenToWorld(x: number, y: number): Point {
     return { x: (x - offsetX) / scale, y: (y - offsetY) / scale };
@@ -90,7 +53,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const after = screenToWorld(mx, my);
       offsetX += mx - after.x * scale - (mx - before.x * scale);
       offsetY += my - after.y * scale - (my - before.y * scale);
-      draw();
+      draw(canvas);
       e.preventDefault();
     },
     { passive: false },
@@ -112,7 +75,7 @@ document.addEventListener("DOMContentLoaded", () => {
     offsetX += e.clientX - startPan.x;
     offsetY += e.clientY - startPan.y;
     startPan = { x: e.clientX, y: e.clientY };
-    draw();
+    draw(canvas);
   });
 
   canvas.addEventListener("click", (e) => {
@@ -133,8 +96,8 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   function selectFrame(idx: number): void {
-    selectedIndex = idx;
-    draw();
+    setSelectedIndex(idx);
+    draw(canvas);
     updateDetails();
     previewCrop();
     scrollToItem(idx);
@@ -215,106 +178,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function loadImageFromFile(file: File): Promise<HTMLImageElement> {
-    return new Promise((resolve, reject) => {
-      const url = URL.createObjectURL(file);
-      const img = new Image();
-      img.onload = () => {
-        URL.revokeObjectURL(url);
-        resolve(img);
-      };
-      img.onerror = () => reject(new Error("Image load error"));
-      img.src = url;
-    });
-  }
-
-  function parseMeta(text: string): Frame[] {
-    try {
-      const j: JsonAtlas = JSON.parse(text);
-      return parseJsonAtlas(j);
-    } catch {
-      const parser = new DOMParser();
-      const xml = parser.parseFromString(text, "application/xml");
-      if (xml.getElementsByTagName("parsererror").length) {
-        throw new Error("Could not parse as JSON or XML");
-      }
-      return parseXmlAtlas(xml);
-    }
-  }
-
-  function parseJsonAtlas(j: JsonAtlas): Frame[] {
-    const out: Frame[] = [];
-
-    if (Array.isArray(j)) {
-      for (const fr of j) {
-        out.push({
-          name: fr.name ?? "(noname)",
-          x: fr.x | 0,
-          y: fr.y | 0,
-          w: fr.w | 0,
-          h: fr.h | 0,
-          rotated: !!fr.rotated,
-        });
-      }
-      return out;
-    }
-
-    if ("frames" in j && j.frames) {
-      if (Array.isArray(j.frames)) {
-        for (const fr of j.frames) {
-          const rect = fr.frame ?? fr;
-          out.push({
-            name: fr.filename ?? fr.name ?? fr.n ?? "(noname)",
-            x: (rect.x ?? 0) | 0,
-            y: (rect.y ?? 0) | 0,
-            w: (rect.w ?? 0) | 0,
-            h: (rect.h ?? 0) | 0,
-            rotated: !!fr.rotated,
-          });
-        }
-      } else {
-        for (const [name, fr] of Object.entries(j.frames)) {
-          const rect = fr.frame ?? fr;
-          out.push({
-            name,
-            x: (rect.x ?? 0) | 0,
-            y: (rect.y ?? 0) | 0,
-            w: (rect.w ?? 0) | 0,
-            h: (rect.h ?? 0) | 0,
-            rotated: !!fr.rotated,
-          });
-        }
-      }
-      return out;
-    }
-
-    throw new Error("Unknown JSON atlas format");
-  }
-
-  function parseXmlAtlas(xml: Document): Frame[] {
-    const out: Frame[] = [];
-    const subs = xml.getElementsByTagName("SubTexture");
-
-    if (!subs.length) {
-      throw new Error("Unknown XML atlas format");
-    }
-
-    for (const el of Array.from(subs)) {
-      const name = el.getAttribute("name") ?? "(noname)";
-      const x = +(el.getAttribute("x") ?? 0);
-      const y = +(el.getAttribute("y") ?? 0);
-      const w = +(el.getAttribute("width") ?? 0);
-      const h = +(el.getAttribute("height") ?? 0);
-      const rotated =
-        el.getAttribute("rotated") === "true" ||
-        el.getAttribute("rotation") === "90";
-
-      out.push({ name, x, y, w, h, rotated });
-    }
-
-    return out;
-  }
-
   async function handleFilesChanged() {
     if (!imgFile.files || !metaFile.files) return;
     if (!imgFile.files[0] || !metaFile.files[0]) return;
@@ -356,30 +219,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  function drawCropTo(canvas: HTMLCanvasElement, f: Frame) {
-    const c = canvas.getContext("2d") as CanvasRenderingContext2D;
-    c.clearRect(0, 0, canvas.width, canvas.height);
-    if (!atlasImg || !f) return;
-    const scale = Math.min(canvas.width / f.w, canvas.height / f.h);
-    const tw = Math.max(1, Math.floor(f.w * scale));
-    const th = Math.max(1, Math.floor(f.h * scale));
-    const ox = Math.floor((canvas.width - tw) / 2);
-    const oy = Math.floor((canvas.height - th) / 2);
-    c.imageSmoothingEnabled = false;
-    if (f.rotated) {
-      c.save();
-      c.translate(ox + tw / 2, oy + th / 2);
-      c.rotate(-Math.PI / 2);
-      c.drawImage(atlasImg, f.x, f.y, f.h, f.w, -th / 2, -tw / 2, th, tw);
-      c.restore();
-    } else {
-      c.drawImage(atlasImg, f.x, f.y, f.w, f.h, ox, oy, tw, th);
-    }
-  }
-
   function previewCrop() {
     const f = frames[selectedIndex];
-    drawCropTo(cropCanvas, f);
+    drawCropTo(cropCanvas, f, atlasImg);
   }
 
   async function findByImage(): Promise<void> {
