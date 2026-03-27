@@ -1,20 +1,21 @@
 import { canvas, ctx } from "./constants";
 import type { Frame } from "./global";
+import { state } from "./state";
 
 export function draw(canvas: HTMLCanvasElement) {
   ctx.save();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.setTransform(scale, 0, 0, scale, offsetX, offsetY);
-  if (atlasImg) ctx.drawImage(atlasImg, 0, 0);
+  if (state.atlasImg) ctx.drawImage(state.atlasImg, 0, 0);
   ctx.lineWidth = 1 / scale;
   ctx.strokeStyle = "#e5c07b";
   ctx.setLineDash([4 / scale, 4 / scale]);
-  for (let i = 0; i < frames.length; i++) {
-    const f = frames[i];
+  for (let i = 0; i < state.frames.length; i++) {
+    const f = state.frames[i];
     ctx.strokeRect(f.x, f.y, f.w, f.h);
   }
-  if (selectedIndex >= 0) {
-    const f = frames[selectedIndex];
+  if (state.selectedIndex >= 0) {
+    const f = state.frames[state.selectedIndex];
     ctx.setLineDash([]);
     ctx.strokeStyle = "#7aa2f7";
     ctx.lineWidth = 2 / scale;
@@ -34,11 +35,11 @@ export function fitCanvasToParent() {
 export function drawCropTo(
   canvas: HTMLCanvasElement,
   f: Frame,
-  atlasImg: HTMLImageElement | null,
+  state.atlasImg: HTMLImageElement | null,
 ) {
   const c = canvas.getContext("2d") as CanvasRenderingContext2D;
   c.clearRect(0, 0, canvas.width, canvas.height);
-  if (!atlasImg || !f) return;
+  if (!state.atlasImg || !f) return;
   const scale = Math.min(canvas.width / f.w, canvas.height / f.h);
   const tw = Math.max(1, Math.floor(f.w * scale));
   const th = Math.max(1, Math.floor(f.h * scale));
@@ -49,9 +50,9 @@ export function drawCropTo(
     c.save();
     c.translate(ox + tw / 2, oy + th / 2);
     c.rotate(-Math.PI / 2);
-    c.drawImage(atlasImg, f.x, f.y, f.h, f.w, -th / 2, -tw / 2, th, tw);
+    c.drawImage(state.atlasImg, f.x, f.y, f.h, f.w, -th / 2, -tw / 2, th, tw);
     c.restore();
   } else {
-    c.drawImage(atlasImg, f.x, f.y, f.w, f.h, ox, oy, tw, th);
+    c.drawImage(state.atlasImg, f.x, f.y, f.w, f.h, ox, oy, tw, th);
   }
 }

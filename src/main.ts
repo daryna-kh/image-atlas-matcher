@@ -16,16 +16,7 @@ import {
 import type { Point } from "./global";
 import { loadImageFromFile } from "./handlers";
 import { parseMeta } from "./parsers";
-import {
-  atlasImg,
-  isPanning,
-  offsetX,
-  offsetY,
-  scale,
-  selectedIndex,
-  setSelectedIndex,
-  startPan,
-} from "./state";
+import { state, isPanning, offsetX, offsetY, scale, startPan } from "./state";
 import "./style.css";
 import { draw, drawCropTo, fitCanvasToParent } from "./view";
 
@@ -44,7 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
   canvas.addEventListener(
     "wheel",
     (e) => {
-      if (!atlasImg) return;
+      if (!state.atlasImg) return;
       const delta = -Math.sign(e.deltaY) * 0.1;
       const mx = e.offsetX,
         my = e.offsetY;
@@ -79,10 +70,11 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   canvas.addEventListener("click", (e) => {
-    if (!atlasImg) return;
+    if (!state.atlasImg) return;
     const pos = screenToWorld(e.offsetX, e.offsetY);
-    for (let i = frames.length - 1; i >= 0; i--) {
-      const f = frames[i];
+    if (!state.frames) return;
+    for (let i = state.frames.length - 1; i >= 0; i--) {
+      const f = state.frames[i];
       if (
         pos.x >= f.x &&
         pos.x <= f.x + f.w &&
@@ -117,11 +109,12 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updateDetails() {
-    if (selectedIndex < 0) {
+    if (state.selectedIndex < 0) {
       detailsEl.textContent = "—";
       return;
     }
-    const f = frames[selectedIndex];
+    if (!state.frames) return;
+    const f = state.frames[state.selectedIndex];
     detailsEl.innerHTML = `<b>${escapeHtml(f.name)}</b><br>pos: [${f.x}, ${f.y}] size: [${f.w}×${f.h}] rotated: ${f.rotated ? "yes" : "no"}`;
   }
 
@@ -143,7 +136,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function populateList() {
     framesList.innerHTML = "";
-    frames.forEach((f, i) => {
+    if (!state.frames) return;
+    state.frames.forEach((f, i) => {
       const div = document.createElement("div");
       div.className = "item";
       // div.dataset.idx = i;
@@ -152,14 +146,14 @@ document.addEventListener("DOMContentLoaded", () => {
       cnv.width = 44;
       cnv.height = 44;
       const cctx = cnv.getContext("2d") as CanvasRenderingContext2D;
-      if (atlasImg) {
+      if (state.atlasImg) {
         const scale = Math.min(cnv.width / f.w, cnv.height / f.h);
         const tw = Math.max(1, Math.floor(f.w * scale));
         const th = Math.max(1, Math.floor(f.h * scale));
         const ox = Math.floor((cnv.width - tw) / 2);
         const oy = Math.floor((cnv.height - th) / 2);
         cctx.imageSmoothingEnabled = false;
-        cctx.drawImage(atlasImg, f.x, f.y, f.w, f.h, ox, oy, tw, th);
+        cctx.drawImage(state.atlasImg, f.x, f.y, f.w, f.h, ox, oy, tw, th);
       }
       const meta = document.createElement("div");
       meta.className = "meta";
@@ -183,19 +177,20 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!imgFile.files[0] || !metaFile.files[0]) return;
     try {
       setStatus("Loading atlas image...");
-      atlasImg = await loadImageFromFile(imgFile.files[0]);
+      state.atlasImg = await loadImageFromFile(imgFile.files[0]);
       setStatus("Reading the atlas metadata...");
       const metaText = await metaFile.files[0].text();
-      frames = parseMeta(metaText);
-      if (!frames.length) throw new Error("No frames found in metadata");
+      state.frames = parseMeta(metaText);
+      if (!state.frames.length)
+        throw new Error("No state.frames found in metadata");
       scale = 1;
       offsetX = 0;
       offsetY = 0;
-      selectedIndex = -1;
+      state.selectedIndex = -1;
       fitCanvasToParent();
       populateList();
       setStatus(
-        `Done: frames loaded: ${frames.length}. Click on the list or on the atlas.`,
+        `Done: state.frames loaded: ${state.frames.length}. Click on the list or on the atlas.`,
       );
     } catch (e) {
       console.error(e);
@@ -210,18 +205,20 @@ document.addEventListener("DOMContentLoaded", () => {
   btnFindByName.addEventListener("click", () => {
     const q = (nameQuery.value || "").toLowerCase();
     if (!q) return;
-    const idx = frames.findIndex((f) => f.name.toLowerCase().includes(q));
+    if (!state.frames) return;
+    const idx = state.frames.findIndex((f) => f.name.toLowerCase().includes(q));
     if (idx >= 0) {
       selectFrame(idx);
-      setStatus(`Match found by name: “${frames[idx].name}”`, "match");
+      setStatus(`Match found by name: “${state.frames[idx].name}”`, "match");
     } else {
       setStatus("No matches found by name", "warning");
     }
   });
 
   function previewCrop() {
-    const f = frames[selectedIndex];
-    drawCropTo(cropCanvas, f, atlasImg);
+    if (!state.frames) return;
+    const f = state.frames[state.selectedIndex];
+    drawCropTo(cropCanvas, f, state.atlasImg);
   }
 
   async function findByImage(): Promise<void> {
@@ -230,7 +227,7 @@ document.addEventListener("DOMContentLoaded", () => {
       setStatus("Upload an image for comparison", "warning");
       return;
     }
-    if (!atlasImg || !frames.length) {
+    if (!state.atlasImg || !state.frames.length) {
       setStatus("Download the atlas and metadata", "warning");
       return;
     }
@@ -267,9 +264,9 @@ document.addEventListener("DOMContentLoaded", () => {
         mse: Infinity,
       };
 
-      setStatus("I compare it with frames...");
-      for (let i = 0; i < frames.length; i++) {
-        const f = frames[i];
+      setStatus("I compare it with state.frames...");
+      for (let i = 0; i < state.frames.length; i++) {
+        const f = state.frames[i];
         tctx.clearRect(0, 0, 64, 64);
         const s = Math.min(64 / f.w, 64 / f.h);
         const tw = Math.max(1, Math.floor(f.w * s));
@@ -282,7 +279,7 @@ document.addEventListener("DOMContentLoaded", () => {
           tctx.translate(32, 32);
           tctx.rotate(-Math.PI / 2);
           tctx.drawImage(
-            atlasImg,
+            state.atlasImg,
             f.x,
             f.y,
             f.h,
@@ -294,7 +291,7 @@ document.addEventListener("DOMContentLoaded", () => {
           );
           tctx.restore();
         } else {
-          tctx.drawImage(atlasImg, f.x, f.y, f.w, f.h, tx, ty, tw, th);
+          tctx.drawImage(state.atlasImg, f.x, f.y, f.w, f.h, tx, ty, tw, th);
         }
         const d = tctx.getImageData(0, 0, 64, 64).data;
         let mse = 0;
@@ -311,7 +308,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (best.idx >= 0) {
         selectFrame(best.idx);
         setStatus(
-          `Best match: "${frames[best.idx].name}" (MSE=${best.mse.toFixed(1)})`,
+          `Best match: "${state.frames[best.idx].name}" (MSE=${best.mse.toFixed(1)})`,
           "match",
         );
         queryCtx.clearRect(0, 0, queryCanvas.width, queryCanvas.height);
