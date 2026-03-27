@@ -31,9 +31,9 @@ export function parseJsonAtlas(j: JsonAtlas): Frame[] {
     return out;
   }
 
-  if ("state.frames" in j && j.state.frames) {
-    if (Array.isArray(j.state.frames)) {
-      for (const fr of j.state.frames) {
+  if ("frames" in j && j.frames) {
+    if (Array.isArray(j.frames)) {
+      for (const fr of j.frames) {
         const rect = fr.frame ?? fr;
         out.push({
           name: fr.filename ?? fr.name ?? fr.n ?? "(noname)",
@@ -45,7 +45,7 @@ export function parseJsonAtlas(j: JsonAtlas): Frame[] {
         });
       }
     } else {
-      for (const [name, fr] of Object.entries(j.state.frames)) {
+      for (const [name, fr] of Object.entries(j.frames)) {
         const rect = fr.frame ?? fr;
         out.push({
           name,
