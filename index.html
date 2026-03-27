@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 
 <head>
   <meta charset="UTF-8" />
@@ -11,83 +11,107 @@
   <title>Atlas Inspector</title>
 </head>
 
-<body>
-  <div id="app">
-    <header>
-      <h1>
-        Atlas Inspector
-      </h1>
+<body class="bg-base-900 text-base-content">
+  <div id="app" class="h-screen flex flex-col">
+    <header class="sticky top-0 z-50 px-4 py-3 border-b border-base-800 bg-base-800 flex items-center gap-3">
+      <img src="/icons/android-chrome-192x192.png" alt="Atlas Inspector" class="w-8 h-8 rounded-[7px]">
+      <h1 class="text-lg font-semibold tracking-wide">Atlas Inspector</h1>
     </header>
-    <div class="wrap">
-      <aside>
-        <div class="section inputs">
-          <h2>Files</h2>
-          <label>Atlas image (PNG)</label>
-          <input id="imgFile" type="file" accept="image/png,image/webp,image/jpeg" />
-          <label>Atlas metadata (JSON or XML)</label>
-          <input id="metaFile" type="file" accept=".json,.xml,.plist,.txt,application/json,text/xml" />
-          <div class="hint">
-            Supports JSON from TexturePacker and XML (Sparrow/Starling:
-            &lt;SubTexture .../&gt;).
+
+    <div class="wrap flex flex-1 min-h-0">
+      <aside class="w-80 border-r border-base-800 bg-base-800 overflow-y-auto flex flex-col">
+        <!-- File Upload Section -->
+        <div class="section px-4 py-3 border-b border-base-800">
+          <h2 class="text-xs text-base-500 font-semibold uppercase tracking-widest mb-3">Files</h2>
+          <label class="block mt-2 mb-1 text-base-500 text-sm">Atlas image (PNG)</label>
+          <input id="imgFile" type="file" accept="image/png,image/webp,image/jpeg"
+            class="file-input file-input-bordered file-input-sm w-full" />
+
+          <label class="block mt-3 mb-1 text-base-500 text-sm">Atlas metadata (JSON or XML)</label>
+          <input id="metaFile" type="file" accept=".json,.xml,.plist,.txt,application/json,text/xml"
+            class="file-input file-input-bordered file-input-sm w-full" />
+
+          <div class="hint mt-2 text-xs text-base-500">
+            Supports JSON from TexturePacker and XML (Sparrow/Starling: &lt;SubTexture .../&gt;).
           </div>
         </div>
 
-        <div class="section">
-          <h2>Search by Name</h2>
-          <div class="row">
-            <input id="nameQuery" type="text" placeholder="enter frame name..." class="grow" />
-            <button class="btn" id="btnFindByName">Find</button>
+        <!-- Search by Name Section -->
+        <div class="section px-4 py-3 border-b border-base-800">
+          <h2 class="text-xs text-base-500 font-semibold uppercase tracking-widest mb-3">Search by Name</h2>
+          <div class="flex gap-2 items-center">
+            <input id="nameQuery" type="text" placeholder="enter frame name..."
+              class="input input-bordered input-sm flex-1 bg-base-900" />
+            <button id="btnFindByName" class="btn btn-primary btn-sm">Find</button>
           </div>
-          <div class="hint">
+          <div class="hint mt-2 text-xs text-base-500">
             Names are taken from JSON/XML (frames keys / name attribute).
           </div>
         </div>
 
-        <div class="section">
-          <h2>Search by Image</h2>
-          <label>Image to search</label>
-          <input id="queryImg" type="file" accept="image/*" />
-          <div class="row" style="margin-top: 8px">
-            <button class="btn" id="btnFindByImage">Match</button>
-            <span class="hint">Comparison by MSE at 64×64, with rotate support.</span>
+        <!-- Search by Image Section -->
+        <div class="section px-4 py-3 border-b border-base-800">
+          <h2 class="text-xs text-base-500 font-semibold uppercase tracking-widest mb-3">Search by Image</h2>
+          <label class="block mb-1 text-base-500 text-sm">Image to search</label>
+          <input id="queryImg" type="file" accept="image/*"
+            class="file-input file-input-bordered file-input-sm w-full" />
+          <div class="flex gap-2 items-center mt-2">
+            <button id="btnFindByImage" class="btn btn-primary btn-sm">Match</button>
+            <span class="hint text-xs text-base-500">Comparison by MSE at 64×64, with rotate support.</span>
           </div>
         </div>
 
-        <div class="section">
-          <h2>Atlas Frames</h2>
-          <div class="list" id="framesList"></div>
-          <div class="hint" style="margin-top: 6px">
+        <!-- Frame List Section -->
+        <div class="section px-4 py-3 border-b border-base-800 flex-1 flex flex-col min-h-0">
+          <h2 class="text-xs text-base-500 font-semibold uppercase tracking-widest mb-3">Atlas Frames</h2>
+          <div class="list flex-1 overflow-auto border border-base-700 rounded-lg bg-base-900" id="framesList"></div>
+          <div class="hint mt-2 text-xs text-base-500">
             Click a frame to highlight it on the atlas.
           </div>
         </div>
       </aside>
 
-      <main>
-        <div class="legend">
-          <span class="b"></span> selected frame
-          <span class="s"></span> all frames
-          <span class="pill">Mouse wheel - zoom, drag - pan</span>
+      <main class="flex-1 flex flex-col min-w-0">
+        <!-- Legend -->
+        <div class="legend flex gap-2.5 items-center px-4 py-2 border-b border-base-800">
+          <span class="w-3 h-3 inline-block border-2 border-primary"></span>
+          <span>Selected frame</span>
+          <span class="w-3 h-3 inline-block border-2 border-dashed border-warning"></span>
+          <span>All frames</span>
+          <span
+            class="pill inline-block px-1.5 py-0.5 rounded-full bg-base-900 border border-base-700 text-base-500 text-xs ml-auto">Mouse
+            wheel - zoom, drag - pan</span>
         </div>
 
-        <div class="status" id="status">
+        <!-- Status Message -->
+        <div id="status" class="status px-4 py-2 border-b border-base-800 text-base-500">
           Upload the atlas image file and metadata.
         </div>
 
-        <canvas id="atlasCanvas"></canvas>
+        <!-- Canvas and Details Container -->
+        <div class="flex flex-1 min-h-0 gap-4 p-4 border-b border-base-800">
+          <!-- Left: Canvas -->
+          <div class="flex-1 min-w-0">
+            <canvas id="atlasCanvas" class="w-full h-full bg-black" style="image-rendering: pixelated;"></canvas>
+          </div>
 
-        <div class="section">
-          <h2>Frame Details</h2>
-          <div id="frameDetails" class="hint">-</div>
-          <div style="display: flex; gap: 16px; margin-top: 10px">
+          <!-- Right: Frame Details Section -->
+          <div class="w-[200px] flex flex-col gap-4 overflow-y-auto">
             <div>
-              <div class="hint">Cropped from atlas:</div>
-              <canvas id="cropCanvas" width="256" height="256"
-                style="border: 1px solid #222633; background: #0b0d12"></canvas>
+              <h2 class="text-xs text-base-500 font-semibold uppercase tracking-widest mb-3">Frame Details</h2>
+              <div id="frameDetails" class="hint text-xs text-base-500">-</div>
             </div>
+
             <div>
-              <div class="hint">Query image (normalized):</div>
-              <canvas id="queryCanvas" width="256" height="256"
-                style="border: 1px solid #222633; background: #0b0d12"></canvas>
+              <div class="hint text-xs text-base-500 mb-2">Cropped from atlas:</div>
+              <canvas id="cropCanvas" width="256" height="256" class="w-full border border-base-700 bg-black"
+                style="display: block;"></canvas>
+            </div>
+
+            <div>
+              <div class="hint text-xs text-base-500 mb-2">Query image (normalized):</div>
+              <canvas id="queryCanvas" width="256" height="256" class="w-full border border-base-700 bg-black"
+                style="display: block;"></canvas>
             </div>
           </div>
         </div>
