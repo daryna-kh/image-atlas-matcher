@@ -115,9 +115,9 @@ export function scrollToItem(framesList: HTMLElement, idx: number): void {
 
   item.scrollIntoView({ block: "nearest" });
   framesList.querySelectorAll<HTMLDivElement>(".item").forEach((el) => {
-    el.style.background = "";
+    el.classList.remove("bg-base-800");
   });
-  item.style.background = "#10131a";
+  item.classList.add("bg-base-800");
 }
 
 export function previewCrop(): void {
