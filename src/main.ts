@@ -2,6 +2,7 @@ import {
   btnFindByImage,
   btnFindByName,
   canvas,
+  DATABASE_NAME,
   detailsEl,
   framesList,
   imgFile,
@@ -9,6 +10,7 @@ import {
   metaFile,
   metaFileName,
   nameQuery,
+  OBJECTS_STORE,
   queryImg,
   statusEl,
 } from "./constants";
@@ -23,6 +25,7 @@ import {
   populateList,
   scrollToItem,
   updateDetails,
+  getUser,
 } from "./actions";
 import "./style.css";
 
@@ -34,6 +37,26 @@ function setStatus(message: string, type: string = ""): void {
 document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener("resize", fitCanvasToParent);
   window.addEventListener("load", fitCanvasToParent);
+
+  const db = window.indexedDB.open(DATABASE_NAME);
+
+  db.onerror = () => {
+    console.error("Error loading database.", db.error);
+  };
+
+  db.onsuccess = () => {
+    console.log("Database initialized and ready.");
+    getUser(1);
+  };
+
+  db.onupgradeneeded = (e) => {
+    if (!e.target) return;
+    const target = e.target as IDBOpenDBRequest;
+    const db_ = target.result;
+    if (!db_.objectStoreNames.contains(OBJECTS_STORE)) {
+      const store = db_.createObjectStore(OBJECTS_STORE, { keyPath: "id" });
+    }
+  };
 
   canvas.addEventListener(
     "wheel",
