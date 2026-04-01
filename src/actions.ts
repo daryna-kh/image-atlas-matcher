@@ -82,11 +82,11 @@ export function populateList(
 
     const cnv = document.createElement("canvas");
     cnv.className = "thumb";
-    cnv.width = 44;
-    cnv.height = 44;
+    cnv.width = 50;
+    cnv.height = 50;
     const cctx = cnv.getContext("2d") as CanvasRenderingContext2D;
 
-    generateThumbnail(cctx, state.atlasImg!, f, 44);
+    generateThumbnail(cctx, state.atlasImg!, f, 50);
 
     const meta = document.createElement("div");
     meta.className = "meta";

@@ -32,3 +32,5 @@ export const statusEl = document.getElementById("status") as HTMLDivElement;
 export const detailsEl = document.getElementById(
   "frameDetails",
 ) as HTMLDivElement;
+export const imgFileName = document.getElementById("imgFileName") as HTMLDivElement;
+export const metaFileName = document.getElementById("metaFileName") as HTMLDivElement;
