@@ -5,7 +5,9 @@ import {
   detailsEl,
   framesList,
   imgFile,
+  imgFileName,
   metaFile,
+  metaFileName,
   nameQuery,
   queryImg,
   statusEl,
@@ -116,8 +118,14 @@ document.addEventListener("DOMContentLoaded", () => {
     updateDetails(detailsEl);
   };
 
-  imgFile.addEventListener("change", handleFilesChanged);
-  metaFile.addEventListener("change", handleFilesChanged);
+  imgFile.addEventListener("change", () => {
+    if (imgFile.files?.[0]) imgFileName.textContent = imgFile.files[0].name;
+    handleFilesChanged();
+  });
+  metaFile.addEventListener("change", () => {
+    if (metaFile.files?.[0]) metaFileName.textContent = metaFile.files[0].name;
+    handleFilesChanged();
+  });
 
   btnFindByName.addEventListener("click", () => {
     findByName(nameQuery.value || "", setStatus);
