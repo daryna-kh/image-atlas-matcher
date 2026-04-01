@@ -1,3 +1,5 @@
+export const DATABASE_NAME = "AtlasImgDB";
+export const OBJECTS_STORE = "AtlasStore";
 export const queryCanvas = document.getElementById(
   "queryCanvas",
 ) as HTMLCanvasElement;

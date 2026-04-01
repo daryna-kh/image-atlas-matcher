@@ -1,4 +1,10 @@
-import { cropCanvas, queryCanvas, queryCtx } from "./constants";
+import {
+  cropCanvas,
+  DATABASE_NAME,
+  OBJECTS_STORE,
+  queryCanvas,
+  queryCtx,
+} from "./constants";
 import { loadImageFromFile } from "./handlers";
 import { parseMeta } from "./parsers";
 import { state, loadAtlas, selectFrame as setState } from "./state";
@@ -9,8 +15,50 @@ import {
   escapeHtml,
   generateThumbnail,
 } from "./calculations";
+import type { Frame } from "./global";
 
 export type StatusCallback = (message: string, type?: string) => void;
+
+async function addToDB(imgInput: File, data: Frame[]) {
+  const db = window.indexedDB.open(DATABASE_NAME);
+
+  db.onsuccess = async (e) => {
+    if (!e.target) return;
+    const target = e.target as IDBOpenDBRequest;
+
+    const db_ = target.result;
+
+    const transaction = db_.transaction(OBJECTS_STORE, "readwrite");
+    const store = transaction.objectStore(OBJECTS_STORE);
+    const record = {
+      id: 1,
+      image: imgInput,
+      json: data,
+    };
+    const addRequest = store.put(record);
+    addRequest.onsuccess = () => console.log(`File saved!`);
+    addRequest.onerror = () => console.error(addRequest.error);
+  };
+}
+
+export function getUser(id: number) {
+  const db = window.indexedDB.open(DATABASE_NAME);
+
+  db.onsuccess = (e) => {
+    if (!e.target) return;
+    const target = e.target as IDBOpenDBRequest;
+
+    const db_ = target.result;
+
+    const transaction = db_.transaction(OBJECTS_STORE, "readwrite");
+    const store = transaction.objectStore(OBJECTS_STORE);
+
+    const getRequest = store.get(id);
+    getRequest.onsuccess = () => {
+      console.log("Get files", getRequest.result);
+    };
+  };
+}
 
 export async function loadFiles(
   imgFile: File,
@@ -28,7 +76,7 @@ export async function loadFiles(
     if (!frames.length) {
       throw new Error("No frames found in metadata");
     }
-
+    addToDB(imgFile, frames);
     loadAtlas(atlasImg, frames);
     fitCanvasToParent();
     draw();
