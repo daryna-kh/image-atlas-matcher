@@ -1,4 +1,16 @@
 import {
+  addToDB,
+  findByImage,
+  findByName,
+  getAtlasData,
+  loadFiles,
+  renderAtlas,
+  scrollToItem,
+  selectFrame,
+  updateDetails,
+} from "./actions";
+import { findFrameAtPos, screenToWorld } from "./calculations";
+import {
   btnFindByImage,
   btnFindByName,
   canvas,
@@ -14,20 +26,11 @@ import {
   queryImg,
   statusEl,
 } from "./constants";
-import { state } from "./state";
-import { draw, fitCanvasToParent } from "./view";
-import { screenToWorld, findFrameAtPos } from "./calculations";
-import {
-  loadFiles,
-  selectFrame,
-  findByName,
-  findByImage,
-  populateList,
-  scrollToItem,
-  updateDetails,
-  getUser,
-} from "./actions";
+import { loadImageFromFile } from "./handlers";
+import { parseMeta } from "./parsers";
+import { loadAtlas, state } from "./state";
 import "./style.css";
+import { draw, fitCanvasToParent } from "./view";
 
 function setStatus(message: string, type: string = ""): void {
   statusEl.textContent = message;
@@ -35,8 +38,7 @@ function setStatus(message: string, type: string = ""): void {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  window.addEventListener("resize", fitCanvasToParent);
-  window.addEventListener("load", fitCanvasToParent);
+  new ResizeObserver(() => fitCanvasToParent()).observe(canvas);
 
   const db = window.indexedDB.open(DATABASE_NAME);
 
@@ -44,9 +46,8 @@ document.addEventListener("DOMContentLoaded", () => {
     console.error("Error loading database.", db.error);
   };
 
-  db.onsuccess = () => {
+  db.onsuccess = async () => {
     console.log("Database initialized and ready.");
-    getUser(1);
   };
 
   db.onupgradeneeded = (e) => {
@@ -131,14 +132,32 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  window.addEventListener("load", handleLoadFromDB);
+
+  async function handleLoadFromDB() {
+    const data = await getAtlasData();
+    if (!data) return;
+
+    setStatus("Loading atlas image...");
+    const atlasImg = await loadImageFromFile(data[0].image);
+
+    loadAtlas(atlasImg, data[0].json);
+    fitCanvasToParent();
+    renderAtlas();
+  }
+
   const handleFilesChanged = async () => {
     if (!imgFile.files?.[0] || !metaFile.files?.[0]) return;
-    await loadFiles(imgFile.files[0], metaFile.files[0], setStatus);
-    populateList(framesList, (idx) => {
-      selectFrame(idx);
-      scrollToItem(framesList, idx);
-    });
-    updateDetails(detailsEl);
+    setStatus("Reading the atlas metadata...");
+    const metaText = await metaFile.files?.[0].text();
+    const frames = parseMeta(metaText);
+
+    if (!frames.length) {
+      throw new Error("No frames found in metadata");
+    }
+    addToDB(imgFile.files?.[0], frames);
+    await loadFiles(imgFile.files[0], frames, setStatus);
+    renderAtlas();
   };
 
   imgFile.addEventListener("change", () => {

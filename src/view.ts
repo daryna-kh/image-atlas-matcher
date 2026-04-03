@@ -40,6 +40,7 @@ export function draw(): void {
 
 export function fitCanvasToParent(): void {
   const rect = canvas.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
   canvas.width = rect.width * devicePixelRatio;
   canvas.height = rect.height * devicePixelRatio;
   ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
