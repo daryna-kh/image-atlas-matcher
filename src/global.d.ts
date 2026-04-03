@@ -46,3 +46,9 @@ export type JsonAtlas =
       h: number;
       rotated?: boolean;
     }>;
+
+type AtlasBBData = {
+  id: number;
+  image: File;
+  json: Frame[];
+};

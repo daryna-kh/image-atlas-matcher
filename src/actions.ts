@@ -1,25 +1,26 @@
 import {
+  computeMSE,
+  escapeHtml,
+  generateThumbnail,
+  normalizeImage,
+} from "./calculations";
+import {
   cropCanvas,
   DATABASE_NAME,
+  detailsEl,
+  framesList,
   OBJECTS_STORE,
   queryCanvas,
   queryCtx,
 } from "./constants";
+import type { AtlasBBData, Frame } from "./global";
 import { loadImageFromFile } from "./handlers";
-import { parseMeta } from "./parsers";
-import { state, loadAtlas, selectFrame as setState } from "./state";
+import { loadAtlas, selectFrame as setState, state } from "./state";
 import { draw, drawCropTo, fitCanvasToParent } from "./view";
-import {
-  computeMSE,
-  normalizeImage,
-  escapeHtml,
-  generateThumbnail,
-} from "./calculations";
-import type { Frame } from "./global";
 
 export type StatusCallback = (message: string, type?: string) => void;
 
-async function addToDB(imgInput: File, data: Frame[]) {
+export async function addToDB(imgInput: File, data: Frame[]) {
   const db = window.indexedDB.open(DATABASE_NAME);
 
   db.onsuccess = async (e) => {
@@ -30,7 +31,7 @@ async function addToDB(imgInput: File, data: Frame[]) {
 
     const transaction = db_.transaction(OBJECTS_STORE, "readwrite");
     const store = transaction.objectStore(OBJECTS_STORE);
-    const record = {
+    const record: AtlasBBData = {
       id: 1,
       image: imgInput,
       json: data,
@@ -41,42 +42,36 @@ async function addToDB(imgInput: File, data: Frame[]) {
   };
 }
 
-export function getUser(id: number) {
+export async function getAtlasData(): Promise<AtlasBBData[] | null> {
   const db = window.indexedDB.open(DATABASE_NAME);
 
-  db.onsuccess = (e) => {
-    if (!e.target) return;
-    const target = e.target as IDBOpenDBRequest;
+  return new Promise((resolve, reject) => {
+    db.onsuccess = (e) => {
+      if (!e.target) return;
+      const target = e.target as IDBOpenDBRequest;
 
-    const db_ = target.result;
+      const db_ = target.result;
 
-    const transaction = db_.transaction(OBJECTS_STORE, "readwrite");
-    const store = transaction.objectStore(OBJECTS_STORE);
+      const transaction = db_.transaction(OBJECTS_STORE, "readwrite");
+      const store = transaction.objectStore(OBJECTS_STORE);
 
-    const getRequest = store.get(id);
-    getRequest.onsuccess = () => {
-      console.log("Get files", getRequest.result);
+      const getRequest = store.getAll();
+      getRequest.onsuccess = () => resolve(getRequest.result);
+      getRequest.onerror = () => reject(null);
     };
-  };
+    db.onerror = () => reject(null);
+  });
 }
 
 export async function loadFiles(
   imgFile: File,
-  metaFile: File,
+  frames: Frame[],
   onStatus: StatusCallback,
 ): Promise<void> {
   try {
     onStatus("Loading atlas image...");
     const atlasImg = await loadImageFromFile(imgFile);
 
-    onStatus("Reading the atlas metadata...");
-    const metaText = await metaFile.text();
-    const frames = parseMeta(metaText);
-
-    if (!frames.length) {
-      throw new Error("No frames found in metadata");
-    }
-    addToDB(imgFile, frames);
     loadAtlas(atlasImg, frames);
     fitCanvasToParent();
     draw();
@@ -269,4 +264,12 @@ export async function findByImage(
       "error",
     );
   }
+}
+
+export function renderAtlas() {
+  populateList(framesList, (idx) => {
+    selectFrame(idx);
+    scrollToItem(framesList, idx);
+  });
+  updateDetails(detailsEl);
 }
