@@ -50,5 +50,6 @@ export type JsonAtlas =
 type AtlasBBData = {
   id: number;
   image: File;
+  metaName: string;
   json: Frame[];
 };

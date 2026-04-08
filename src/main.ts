@@ -23,7 +23,7 @@ import {
   metaFileName,
   nameQuery,
   OBJECTS_STORE,
-  queryImg,
+  // queryImg,
   statusEl,
 } from "./constants";
 import { loadImageFromFile } from "./handlers";
@@ -34,7 +34,7 @@ import { draw, fitCanvasToParent } from "./view";
 
 function setStatus(message: string, type: string = ""): void {
   statusEl.textContent = message;
-  statusEl.className = `status ${type}`;
+  statusEl.className = `status ${type} px-4 py-2 border-b border-base-800 text-base-500`;
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -141,9 +141,15 @@ document.addEventListener("DOMContentLoaded", () => {
     setStatus("Loading atlas image...");
     const atlasImg = await loadImageFromFile(data[0].image);
 
+    imgFileName.textContent = data[0].image.name;
+    metaFileName.textContent = data[0].metaName;
     loadAtlas(atlasImg, data[0].json);
     fitCanvasToParent();
     renderAtlas();
+    setStatus(
+      `Done: ${data[0].json.length} frames loaded. Click on the list or on the atlas.`,
+      "match",
+    );
   }
 
   const handleFilesChanged = async () => {
@@ -155,7 +161,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!frames.length) {
       throw new Error("No frames found in metadata");
     }
-    addToDB(imgFile.files?.[0], frames);
+    addToDB(imgFile.files?.[0], metaFile.files[0].name, frames);
     await loadFiles(imgFile.files[0], frames, setStatus);
     renderAtlas();
   };
@@ -177,15 +183,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  btnFindByImage.addEventListener("click", async () => {
-    if (!queryImg.files?.[0]) {
-      setStatus("Upload an image for comparison", "warning");
-      return;
-    }
-    await findByImage(queryImg.files[0], setStatus);
-    if (state.selectedIndex >= 0) {
-      scrollToItem(framesList, state.selectedIndex);
-      updateDetails(detailsEl);
-    }
-  });
+  // btnFindByImage.addEventListener("click", async () => {
+  //   if (!queryImg.files?.[0]) {
+  //     setStatus("Upload an image for comparison", "warning");
+  //     return;
+  //   }
+  //   await findByImage(queryImg.files[0], setStatus);
+  //   if (state.selectedIndex >= 0) {
+  //     scrollToItem(framesList, state.selectedIndex);
+  //     updateDetails(detailsEl);
+  //   }
+  // });
 });

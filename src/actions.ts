@@ -20,7 +20,7 @@ import { draw, drawCropTo, fitCanvasToParent } from "./view";
 
 export type StatusCallback = (message: string, type?: string) => void;
 
-export async function addToDB(imgInput: File, data: Frame[]) {
+export async function addToDB(imgInput: File, metaName: string, data: Frame[]) {
   const db = window.indexedDB.open(DATABASE_NAME);
 
   db.onsuccess = async (e) => {
@@ -34,6 +34,7 @@ export async function addToDB(imgInput: File, data: Frame[]) {
     const record: AtlasBBData = {
       id: 1,
       image: imgInput,
+      metaName,
       json: data,
     };
     const addRequest = store.put(record);
